@@ -2,11 +2,11 @@
 
 int main(int argc, char** argv)
 {
-	Game snake;
-	bool isInit = snake.Initialize();
+	Game tetris;
+	bool isInit = tetris.Initialize();
 	if (!isInit) return 1;
-	snake.RunLoop();
-	snake.Shutdown();
+	tetris.RunLoop();
+	tetris.Shutdown();
 
 	return 0;
 }

@@ -24,8 +24,11 @@ public:
 	// Getters/setters
 	const Vector2& GetPosition() const { return mPosition; }
 	void SetPosition(const Vector2& pos) { mPosition = pos; }
+
+	// The size of the actor
 	float GetScale() const { return mScale; }
 	void SetScale(float scale) { mScale = scale; }
+
 	float GetRotation() const { return mRotation; }
 	void SetRotation(float rotation) { mRotation = rotation; }
 	Vector2 GetForward();
@@ -40,7 +43,7 @@ public:
 	void AddComponent(class Component* c);
 
 	// Any actor-specific update code (overridable);
-	virtual void RenderToGrid();
+	// virtual void RenderToGrid();
 	
 	// Returns component of type T, or null if doesn't exist
 	template <typename T>

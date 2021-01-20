@@ -1,17 +1,14 @@
-#include "Game.h"
-#include "Actor.h"
-#include "Random.h"
 #include <SDL/SDL_image.h>
 #include <algorithm>
-#include "Snake.h"
-#include "Score.h"
-#include "Font.h"
-#include "Texture.h"
 #include <string>
-#include "Button.h"
+#include <fstream>
+#include "Random.h"
+#include "Game.h"
+#include "Actor.h"
+#include "Grid.h"
+#include "Font.h"
 
-Game::Game():window(NULL),render(NULL),running(true), mActors(NULL), mCellOccupied(NULL), mSnake(NULL), mScore(NULL),
-			 mFont(NULL), mCurrentScore(NULL), mButton(NULL)
+Game::Game():window(NULL),render(NULL),running(true), mActors(NULL)
 { 	
 
 }
@@ -30,11 +27,11 @@ bool Game::Initialize()
 
 	// Create the window
 	window = SDL_CreateWindow(
-		"Snake",
+		"Tetris",
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
-		window_width,
-		window_height,
+		col * size,
+		row * size,
 		0
 	);
 	if (window == NULL) 
@@ -91,7 +88,7 @@ void Game::ProcessInput()
 			running = false;
 			break;
 		case SDL_MOUSEBUTTONDOWN:
-			mButton->CheckClickState();
+			// mButton->CheckClickState();
 			break;
 		}
 	}
@@ -119,11 +116,6 @@ void Game::UpdateGame()
 	if (deltatime > 0.033f) deltatime = 0.033f;
 	time_count = SDL_GetTicks();
 
-	if (mSnake == NULL)
-	{
-		mButton->Update(deltatime);
-	}
-
 	// Shallow copy actors vector
 	std::vector<Actor*> copyactors = mActors;
 	for (auto actor : copyactors) 
@@ -148,22 +140,28 @@ void Game::UpdateGame()
 
 void Game::GenerateOutput() 
 {
-	DrawLines();
+	SDL_SetRenderDrawColor(render, grid_bg_color.r, grid_bg_color.g, grid_bg_color.b, grid_bg_color.a);
+	SDL_RenderClear(render);
 
-	for (size_t i = 0; i < mActors.size(); ++i)
+	SDL_Texture* grid_texture = GetTexture("Assets/BlockE.png");
+	for (size_t i = 0; i < mGrids.size(); ++i)
 	{
-		mActors[i]->RenderToGrid();
-	}
+		Vector2 pos = mGrids[i]->GetPosition();
 
-	if (mSnake)
-	{
-		mCurrentScore = mFont->RenderText(std::to_string(mSnake->GetCount()));
-		mCurrentScore->RenderToScreen(render, Vector2(10, 5));
-	}
+		SDL_Rect r;
+		r.w = size;
+		r.h = size;
+		r.x = pos.x;
+		r.y = pos.y;
 
-	if (mSnake == NULL)
-	{
-		mButton->RenderToScreen(render);
+		SDL_RenderCopyEx(render,
+			grid_texture,
+			nullptr,
+			&r,
+			0,
+			nullptr,
+			SDL_FLIP_NONE
+			);
 	}
 
 	SDL_RenderPresent(render);
@@ -189,66 +187,6 @@ void Game::RemoveActor(Actor* actor)
 	mActors.erase(it);
 }
 
-void Game::DrawLines()
-{
-	// Draw the background
-	SDL_SetRenderDrawColor(render, grid_bg_color.r, grid_bg_color.g, grid_bg_color.b, grid_bg_color.a);
-	SDL_RenderClear(render);
-
-	// Draw the grid
-	SDL_SetRenderDrawColor(render, grid_line_color.r, grid_line_color.g, grid_line_color.b, grid_line_color.a);
-	for (int x = 0; x < window_width; x += cell_side_size) 
-	{
-		SDL_RenderDrawLine(render, x, 0, x, window_height);
-	}
-
-	for (int y = 0; y < window_height; y += cell_side_size) 
-	{
-		SDL_RenderDrawLine(render, 0, y, window_width, y);
-	}
-}
-
-void Game::LoadData()
-{
-	mCellOccupied = new bool* [cell_row_size];
-	for (int i = 0; i < cell_row_size; ++i)
-	{
-		mCellOccupied[i] = new bool[cell_column_size]();
-	}
-
-	for (int i = 0; i < cell_row_size; ++i)
-	{
-		for (int j = 0; j < cell_column_size; ++j)
-		{
-			mCellUnfilled.insert(i * 100 + j);
-		}
-	}
-
-	mSnake = new Snake(this);
-	mScore = new Score(this);
-	mFont = new Font(this);
-	mFont->Load("Assets/Inconsolata-Regular.ttf");
-
-	mButton = new Button(window_width, window_height, 10, 5);
-	mButton->SetText("Restart", mFont);
-	mButton->SetOnClick([this] {
-		mSnake = new Snake(this);
-	});
-}
-
-void Game::UnloadData()
-{
-	while (!mActors.empty())
-	{
-		RemoveActor(mActors.back());
-	}
-	for (auto pair : mTextures)
-	{
-		SDL_DestroyTexture(pair.second);
-	}
-	mTextures.clear();
-}
-
 SDL_Texture* Game::GetTexture(const char* filename)
 {
 	// Check if texture exists
@@ -271,32 +209,58 @@ SDL_Texture* Game::GetTexture(const char* filename)
 	return texture;
 }
 
-void Game::DeleteUnfilledCell(std::pair<int, int> cell)
+void Game::AddGrid(Grid* grid)
 {
-	mCellUnfilled.insert(cell.first * 100 + cell.second);
+	mGrids.push_back(grid);
 }
 
-void Game::AddUnfilledCell(std::pair<int, int> cell)
+void Game::RemoveGrid(Grid* grid)
 {
-	mCellUnfilled.erase(cell.first * 100 + cell.second);
+	std::vector<Grid*>::iterator it = std::find(mGrids.begin(), mGrids.end(), grid);
+	mGrids.erase(it);
 }
 
-std::pair<int, int> Game::GetRandonUnfilledCell()
+void Game::LoadData()
 {
-	int count = mCellUnfilled.size();
-	int random = Random::GetIntRange(0, count);
-	std::unordered_set<int>::iterator it = mCellUnfilled.begin();
-	int i = 0;
-	while (i++ < random)
+	std::ifstream mfile;
+	mfile.open("Assets/Layout.txt");
+
+	// Error check
+	if (!mfile.is_open())
 	{
-		++it;
+		SDL_Log("Could not load Layout.txt");
+		return;
 	}
-	
-	int first = (*it) / 100, second = (*it) % 100;
-	return std::pair<int, int>(first, second);
+
+	std::string currLine;
+	float left = 0.0f, top = 0.0f;
+	// A placeholder to the pointer
+	Grid* grid = NULL;
+
+	while (getline(mfile, currLine))
+	{
+		for (auto character : currLine)
+		{
+			switch (character)
+			{
+			case 'A':
+				grid = new Grid(this);
+				grid->SetPosition(Vector2(left, top));
+				break;
+			default:
+				break;
+			}
+			left += size;
+		}
+		top += size;
+		left = 0.0f;
+	}
 }
 
-void Game::ClearSnake() 
-{ 
-	mSnake = NULL; 
+void Game::UnloadData()
+{
+	for (int i = mGrids.size() - 1; i >= 0; --i)
+	{
+		delete mGrids[i];
+	}
 }

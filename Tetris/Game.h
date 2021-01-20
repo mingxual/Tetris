@@ -14,22 +14,12 @@ public:
 
 	void AddActor(class Actor* actor);
 	void RemoveActor(class Actor* actor);
+	void AddSprite(class SpriteComponent* sprite);
+	void RemoveSprite(class SpriteComponent* sprite);
 	SDL_Texture* GetTexture(const char* filename);
+	void AddGrid(class Grid* grid);
+	void RemoveGrid(class Grid* grid);
 	SDL_Renderer* GetRenderer() { return render; }
-	bool** GetCellOccupied() { return mCellOccupied; }
-	class Snake* GetSnake() { return mSnake; }
-	void DeleteUnfilledCell(std::pair<int, int> cell);
-	void AddUnfilledCell(std::pair<int, int> cell);
-	std::pair<int, int> GetRandonUnfilledCell();
-	void ClearSnake();
-
-	// The setting should be a rectangle;
-	int cell_row_size = 25;
-	int cell_column_size = 35;
-	int cell_side_size = 30;
-
-	int window_width = cell_side_size * cell_column_size + 1;
-	int window_height = cell_side_size * cell_row_size + 1;
 
 private:
 	void DrawLines();
@@ -43,8 +33,10 @@ private:
 
 	// Color of bg
 	SDL_Color grid_bg_color = { 25, 25, 25, 255 };
-	// Color of line
-	SDL_Color grid_line_color = { 45, 45, 45, 255 };
+	// Some setting numbers
+	int row = 16;
+	int col = 21;
+	float size = 30.0f;
 
 	// Variable to control the exit of game loop
 	bool running;
@@ -53,16 +45,8 @@ private:
 
 	std::vector<class Actor*> mActors;
 	std::unordered_map<std::string, SDL_Texture*> mTextures;
-
-	std::unordered_set<int> mCellUnfilled;
-	bool** mCellOccupied;
+	std::vector<class Grid*> mGrids;
 	
 	void LoadData();
 	void UnloadData();
-
-	class Snake* mSnake;
-	class Score* mScore;
-	class Font* mFont;
-	class Texture* mCurrentScore;
-	class Button* mButton;
 };

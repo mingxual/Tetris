@@ -69,7 +69,3 @@ Vector2 Actor::GetForward()
 
 	return Vector2(cos(angle), -1 * sin(angle));
 }
-
-void Actor::RenderToGrid()
-{
-}
